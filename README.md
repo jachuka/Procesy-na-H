@@ -2,6 +2,17 @@
 
 Aplikacja do przeliczania wyceny Excel na godziny dziesiętne na sztukę do Subiekta Nexo. Bez tabeli przestawnej.
 
+## Wersja Windows EXE
+
+W sekcji **Releases** repozytorium pobierz `Procesy-na-sztuke.exe` (Windows 10/11, 64-bit). Uruchom dwuklikiem; Python ani Excel nie muszą być zainstalowane. Otworzy się przeglądarka i małe okno sterujące. Zamknięcie okna sterującego wyłącza aplikację. Zamkniętą kartę możesz otworzyć ponownie przyciskiem „Otwórz aplikację”. Dane pozostają na Twoim komputerze; po pobraniu program działa offline. Plik nie jest podpisany cyfrowo.
+
+Plik EXE jest budowany na Windows przez GitHub Actions po wysłaniu tagu `v*`. Publikacja w Releases następuje dopiero po testach obliczeń i uruchomienia gotowego EXE. Ręczny workflow „Aplikacja Windows” udostępnia wynik jako artefakt. Lokalne budowanie na Windows:
+
+```powershell
+python -m pip install -r requirements.txt pyinstaller==6.16.0
+python -m PyInstaller --noconfirm --clean --onefile --windowed --name Procesy-na-sztuke --add-data "static:static" desktop.py
+```
+
 ## Uruchomienie
 
 Python 3.11 lub nowszy:

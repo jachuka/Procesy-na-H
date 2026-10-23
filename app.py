@@ -3,6 +3,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
 import json
 import argparse
+import sys
 
 from calculator import read_workbook
 
@@ -10,6 +11,10 @@ STATIC = Path(__file__).parent / 'static'
 
 
 class Handler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        if sys.stderr is not None:
+            super().log_message(format, *args)
+
     def respond(self, status, body, content_type):
         self.send_response(status)
         self.send_header('Content-Type', content_type)
