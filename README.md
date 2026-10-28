@@ -64,6 +64,12 @@ Po sekcji TORRO aplikacja pokazuje `DRUK PAPIER GUTENBERG`: nazwę papieru/tworz
 
 Ark./szt. = liczba arkuszy łącznie / K4, np. 1300 / 8000 = 0,1625. Przyciski pozwalają skopiować sam wynik lub całą tabelę. Brak opisu pomija pozycję, a brak ilości lub formatu jest zgłaszany tak samo jak w TORRO. Wyniki papieru pozostają oddzielone od zużycia w m².
 
+### Druk UV Konstantynów
+
+Ostatnia tabela pokazuje każdą opisaną pozycję sekcji `DRUK UVKONSTANTYNÓW - SAM DRUK - TWORZYWO UWZGLĘDNIĆ W SEKCJI TWORZYWA` i wyróżniony wiersz „DRUK UV ŁĄCZNIE”. Opis jest odczytywany spod każdego nagłówka `DRUK UV KNZ`, a metraż spod odpowiadającego `m2 łącznie` lub `m² łącznie`, także gdy nagłówek znajduje się w I zamiast J.
+
+Każda pozycja oraz suma mają m² łącznie i m²/szt. = m² / K4. Suma powstaje przed zaokrągleniem; druk pozostaje oddzielony od zużycia tworzyw. Przycisk przy wierszu kopiuje m²/szt.; kopiowanie tabeli obejmuje pozycje i pełne podsumowanie. Puste opisy są pomijane. Niepoprawne ilości zgłaszają ostrzeżenia, a suma jest wtedy oznaczona jako częściowa i jej przycisk kopiowania jest wyłączony. Pozostałe wyniki nadal są dostępne.
+
 ## Układ wyceny
 
 - Nakład: K4, dodatnia całkowita liczba sztuk; nazwa projektu: H4.

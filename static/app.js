@@ -84,6 +84,20 @@ function render() {
   $('copyadditions').disabled = !result.additions.length;
   renderSheetConsumption('offset', result.offset_torro, result.offset_torro_warnings, 'Brak opisanego tworzywa na druk OFFSET TORRO.');
   renderSheetConsumption('gutenberg', result.gutenberg, result.gutenberg_warnings, 'Brak opisanego papieru lub tworzywa na druk GUTENBERG.');
+  const uvRows = result.uv_print.map(m => materialRow(m));
+  if (result.uv_print.length) {
+    const totalRow = materialRow({...result.uv_total, description: result.uv_total.complete ? 'DRUK UV ŁĄCZNIE' : 'DRUK UV — SUMA CZĘŚCIOWA'});
+    totalRow.className = 'totalrow';
+    totalRow.lastChild.firstChild.disabled = !result.uv_total.complete;
+    uvRows.push(totalRow);
+  }
+  $('uvrows').replaceChildren(...uvRows);
+  $('uvstatus').textContent = result.uv_warnings.length
+    ? result.uv_warnings.join('\n') + '\nSuma częściowa obejmuje wyłącznie poprawnie odczytane pozycje.'
+    : result.uv_print.length ? 'Druk UV na sztukę = m² łącznie / K4. Suma druku jest liczona oddzielnie od zużycia tworzyw.' : 'Brak opisanych pozycji druku UV Konstantynów.';
+  $('uvrounding').textContent = result.uv_print.some(m => m.per_item > 0 && Number(m.per_item.toFixed(Number($('precision').value))) === 0)
+    ? 'Mały zadruk zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
+  $('copyuv').disabled = !result.uv_print.length;
 }
 function renderSheetConsumption(prefix, items, warnings, emptyMessage) {
   $(prefix + 'rows').replaceChildren(...items.map(m => {
@@ -118,3 +132,9 @@ $('copymaterialtotals').onclick = () => result && copy('Tworzywo\tm² łącznie\
 $('copyadditions').onclick = () => result && copy('Specyfikacja i opis\tSekcja\tJednostka\tIlość / szt. wyrobu\n' + result.additions.map(a => `${[a.specification, a.description].filter(Boolean).join(' · ').replace(/[\t\r\n]+/g, ' ')}\t${a.section}\t${a.unit}\t${decimal(a.per_item)}`).join('\n'));
 $('copyoffset').onclick = () => result && copy(sheetTable(result.offset_torro));
 $('copygutenberg').onclick = () => result && copy(sheetTable(result.gutenberg));
+$('copyuv').onclick = () => {
+  if (!result) return;
+  const items = [...result.uv_print];
+  if (result.uv_total.complete && items.length) items.push({...result.uv_total, description:'DRUK UV ŁĄCZNIE'});
+  copy((result.uv_total.complete ? '' : 'UWAGA: tylko poprawnie odczytane pozycje; suma niepełna.\n') + 'Opis druku\tm² łącznie\tm² / 1 szt.\n' + items.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.total_m2)}\t${decimal(m.per_item)}`).join('\n'));
+};

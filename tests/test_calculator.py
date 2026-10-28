@@ -23,6 +23,57 @@ def workbook(quantity=10, label='FREZ - cięcie', time=1.5, extra=False):
 
 
 class CalculatorTests(unittest.TestCase):
+    def uv_workbook(self, first=83.33333333333333, blank=False):
+        book = openpyxl.load_workbook(BytesIO(workbook(quantity=1000)))
+        ws = book.active
+        ws['B185'] = 'DRUK UVKONSTANTYNÓW - SAM DRUK - TWORZYWO UWZGLĘDNIĆ W SEKCJI TWORZYWA'
+        for row, col, label, total in [(187, 6, 'druk plecki', first),
+                                       (194, 6, 'druk front', 200),
+                                       (201, 8, 'druk topper', 500),
+                                       (207, 8, 'druk woblery', 200)]:
+            ws.cell(row, col, 'DRUK UV KNZ')
+            ws.cell(row+1, col, ' ' if blank else label)
+            if col == 6:
+                ws.merge_cells(start_row=row, start_column=6, end_row=row, end_column=8)
+                ws.merge_cells(start_row=row+1, start_column=6, end_row=row+1, end_column=8)
+            total_col = 10 if col == 6 else 9
+            ws.cell(row+1, total_col, 'm² łącznie')
+            ws.cell(row+2, total_col, total)
+        ws['B171'] = 'DRUK UV I INNY'
+        ws['F173'] = 'DRUK UV KNZ'
+        ws['F174'] = 'Nie wliczać innej sekcji'
+        ws['J174'] = 'm2 łącznie'
+        ws['J175'] = 999
+        out = BytesIO()
+        book.save(out)
+        book.close()
+        return out.getvalue()
+
+    def test_uv_all_four_blocks_both_total_columns_and_sum(self):
+        result = read_workbook(self.uv_workbook())
+        self.assertEqual([i['total_cell'] for i in result['uv_print']], ['J189', 'J196', 'I203', 'I209'])
+        self.assertEqual([i['description'] for i in result['uv_print']], ['druk plecki', 'druk front', 'druk topper', 'druk woblery'])
+        self.assertAlmostEqual(result['uv_total']['total_m2'], 983.3333333333333)
+        self.assertAlmostEqual(result['uv_total']['per_item'], .9833333333333333)
+        self.assertTrue(result['uv_total']['complete'])
+        self.assertEqual(result['uv_warnings'], [])
+        self.assertEqual(result['materials'], [])
+        self.assertEqual(result['processes'], read_workbook(workbook(quantity=1000))['processes'])
+
+    def test_uv_invalid_quantity_marks_sum_incomplete(self):
+        for total in (None, -1, True, '=1000/12', '#VALUE!'):
+            with self.subTest(total=total):
+                result = read_workbook(self.uv_workbook(first=total))
+                self.assertEqual(len(result['uv_print']), 3)
+                self.assertIn('J189', result['uv_warnings'][0])
+                self.assertEqual(result['uv_total']['total_m2'], 900)
+                self.assertFalse(result['uv_total']['complete'])
+
+    def test_uv_zero_empty_descriptions_and_absent_section(self):
+        self.assertEqual(read_workbook(self.uv_workbook(first=0))['uv_print'][0]['per_item'], 0)
+        self.assertEqual(read_workbook(self.uv_workbook(blank=True))['uv_print'], [])
+        self.assertEqual(read_workbook(workbook())['uv_print'], [])
+
     def gutenberg_workbook(self, total=1300, label='Papier kreda - grafika plecki', numbered=True):
         book = openpyxl.load_workbook(BytesIO(self.offset_workbook()))
         ws = book.active

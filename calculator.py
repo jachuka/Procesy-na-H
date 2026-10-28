@@ -137,8 +137,9 @@ def read_additions(ws, quantity):
     return additions, warnings
 
 
-def read_sheet_consumption(ws, root, quantity, section_title, header_pattern):
-    """Read sheet quantities within one named material or paper section."""
+def read_print_consumption(ws, root, quantity, section_title, header_pattern,
+                           total_label='ARK ŁĄCZNIE', total_key='total_sheets', read_format=True):
+    """Read quantities under repeated description headers in one print section."""
     cells = [c for row in ws.iter_rows() for c in row if c.value is not None]
     def text(value):
         return ' '.join(str(value or '').split())
@@ -158,7 +159,7 @@ def read_sheet_consumption(ws, root, quantity, section_title, header_pattern):
         area = [c for c in cells if section.row < c.row < end]
         headers = [c for c in area if re.fullmatch(header_pattern, text(c.value).upper())]
         if not headers:
-            warnings.append(f'{section.coordinate}: brak nagłówka nazwy tworzywa lub papieru w sekcji {section_title}.')
+            warnings.append(f'{section.coordinate}: brak nagłówka opisu w sekcji {section_title}.')
         for header in headers:
             description = below(header)
             name = text(ws[description].value)
@@ -166,36 +167,48 @@ def read_sheet_consumption(ws, root, quantity, section_title, header_pattern):
                 continue
             block_end = min([end] + [h.row for h in headers if h.row > header.row])
             block = [c for c in area if header.row <= c.row < block_end]
-            totals = [c for c in block if text(c.value).upper() == 'ARK ŁĄCZNIE']
+            totals = [c for c in block if text(c.value).upper().replace('²', '2') == total_label]
             if len(totals) != 1:
-                warnings.append(f'{header.coordinate}: {name} — brak jednoznacznego nagłówka ARK łącznie.')
+                warnings.append(f'{header.coordinate}: {name} — brak jednoznacznego nagłówka {total_label}.')
                 continue
             total_cell = below(totals[0])
             value = ws[total_cell].value
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value) or value < 0:
-                warnings.append(f'{total_cell}: {name} — brak poprawnej liczby arkuszy. Przelicz i zapisz plik w Excelu.')
+                warnings.append(f'{total_cell}: {name} — brak poprawnej ilości. Przelicz i zapisz plik w Excelu.')
                 continue
             formats = [c for c in block if re.sub(r'\s*[-–—]\s*', ' - ', text(c.value).upper()) == 'ARKUSZ - ARK - FORMAT']
             format_cell = below(formats[0]) if len(formats) == 1 else None
             sheet_format = text(ws[format_cell].value) if format_cell is not None else ''
-            if not sheet_format:
+            if read_format and not sheet_format:
                 warnings.append(f'{header.coordinate}: {name} — brak formatu arkusza pod ARKUSZ - ARK - FORMAT.')
             total = Decimal(str(value))
-            items.append({'description': name, 'format': sheet_format, 'total_sheets': float(total),
+            item = {'description': name, total_key: float(total),
                           'per_item': float(total / Decimal(str(quantity))),
-                          'description_cell': description, 'total_cell': total_cell,
-                          'format_cell': format_cell})
+                          'description_cell': description, 'total_cell': total_cell}
+            if read_format:
+                item.update(format=sheet_format, format_cell=format_cell)
+            items.append(item)
     return items, warnings
 
 
 def read_offset_torro(ws, root, quantity):
-    return read_sheet_consumption(ws, root, quantity, 'TWORZYWO NA DRUK OFFSET TORRO',
+    return read_print_consumption(ws, root, quantity, 'TWORZYWO NA DRUK OFFSET TORRO',
                                   r'TWORZYWO(?:\s+\d+)? NA OFFSET')
 
 
 def read_gutenberg(ws, root, quantity):
-    return read_sheet_consumption(ws, root, quantity, 'DRUK PAPIER GUTENBERG',
+    return read_print_consumption(ws, root, quantity, 'DRUK PAPIER GUTENBERG',
                                   r'ETYKIETY PAPIEROWE(?:\s+\d+)?')
+
+
+def read_uv_print(ws, root, quantity):
+    items, warnings = read_print_consumption(
+        ws, root, quantity, 'DRUK UVKONSTANTYNÓW - SAM DRUK - TWORZYWO UWZGLĘDNIĆ W SEKCJI TWORZYWA',
+        r'DRUK UV KNZ', total_label='M2 ŁĄCZNIE', total_key='total_m2', read_format=False)
+    total = sum((Decimal(str(item['total_m2'])) for item in items), Decimal(0))
+    return items, warnings, {'total_m2': float(total),
+                             'per_item': float(total / Decimal(str(quantity))),
+                             'complete': not warnings}
 
 
 def read_workbook(data, sheet=None):
@@ -266,6 +279,7 @@ def read_workbook(data, sheet=None):
         additions, addition_warnings = read_additions(ws, quantity)
         offset_torro, offset_torro_warnings = read_offset_torro(ws, root, quantity)
         gutenberg, gutenberg_warnings = read_gutenberg(ws, root, quantity)
+        uv_print, uv_warnings, uv_total = read_uv_print(ws, root, quantity)
         return {'sheets': candidates, 'sheet': selected, 'quantity': int(quantity),
                 'project': str(ws['H4'].value or ''), 'setup_hours': float(setup),
                 'processes': [{'name': g, 'hours': float(h), 'per_item': float(h / Decimal(str(quantity)))} for g, h in totals.items()],
@@ -273,6 +287,7 @@ def read_workbook(data, sheet=None):
                 'material_totals': summarize_materials(materials, quantity),
                 'additions': additions, 'addition_warnings': addition_warnings,
                 'offset_torro': offset_torro, 'offset_torro_warnings': offset_torro_warnings,
-                'gutenberg': gutenberg, 'gutenberg_warnings': gutenberg_warnings}
+                'gutenberg': gutenberg, 'gutenberg_warnings': gutenberg_warnings,
+                'uv_print': uv_print, 'uv_warnings': uv_warnings, 'uv_total': uv_total}
     finally:
         book.close()
