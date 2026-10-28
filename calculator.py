@@ -137,8 +137,8 @@ def read_additions(ws, quantity):
     return additions, warnings
 
 
-def read_offset_torro(ws, root, quantity):
-    """Read sheet consumption only from the TORRO material section."""
+def read_sheet_consumption(ws, root, quantity, section_title, header_pattern):
+    """Read sheet quantities within one named material or paper section."""
     cells = [c for row in ws.iter_rows() for c in row if c.value is not None]
     def text(value):
         return ' '.join(str(value or '').split())
@@ -150,15 +150,15 @@ def read_offset_torro(ws, root, quantity):
         return f'{cell.column_letter}{row}'
 
     items, warnings = [], []
-    sections = [c for c in cells if text(c.value).upper() == 'TWORZYWO NA DRUK OFFSET TORRO']
+    sections = [c for c in cells if text(c.value).upper() == section_title]
     for section in sections:
         end = min([ws.max_row + 1] + [c.row for c in cells if c.row > section.row
                   and c.column == section.column and text(c.value).upper().startswith(
                       ('DRUK ', 'TWORZYWO NA DRUK ', 'TWORZYWA', 'DODATKI'))])
         area = [c for c in cells if section.row < c.row < end]
-        headers = [c for c in area if re.fullmatch(r'TWORZYWO(?:\s+\d+)? NA OFFSET', text(c.value).upper())]
+        headers = [c for c in area if re.fullmatch(header_pattern, text(c.value).upper())]
         if not headers:
-            warnings.append(f'{section.coordinate}: brak nagłówka TWORZYWO NA OFFSET w sekcji TORRO.')
+            warnings.append(f'{section.coordinate}: brak nagłówka nazwy tworzywa lub papieru w sekcji {section_title}.')
         for header in headers:
             description = below(header)
             name = text(ws[description].value)
@@ -186,6 +186,16 @@ def read_offset_torro(ws, root, quantity):
                           'description_cell': description, 'total_cell': total_cell,
                           'format_cell': format_cell})
     return items, warnings
+
+
+def read_offset_torro(ws, root, quantity):
+    return read_sheet_consumption(ws, root, quantity, 'TWORZYWO NA DRUK OFFSET TORRO',
+                                  r'TWORZYWO(?:\s+\d+)? NA OFFSET')
+
+
+def read_gutenberg(ws, root, quantity):
+    return read_sheet_consumption(ws, root, quantity, 'DRUK PAPIER GUTENBERG',
+                                  r'ETYKIETY PAPIEROWE(?:\s+\d+)?')
 
 
 def read_workbook(data, sheet=None):
@@ -255,12 +265,14 @@ def read_workbook(data, sheet=None):
         materials, material_warnings = read_materials(ws, root, quantity)
         additions, addition_warnings = read_additions(ws, quantity)
         offset_torro, offset_torro_warnings = read_offset_torro(ws, root, quantity)
+        gutenberg, gutenberg_warnings = read_gutenberg(ws, root, quantity)
         return {'sheets': candidates, 'sheet': selected, 'quantity': int(quantity),
                 'project': str(ws['H4'].value or ''), 'setup_hours': float(setup),
                 'processes': [{'name': g, 'hours': float(h), 'per_item': float(h / Decimal(str(quantity)))} for g, h in totals.items()],
                 'details': details, 'materials': materials, 'material_warnings': material_warnings,
                 'material_totals': summarize_materials(materials, quantity),
                 'additions': additions, 'addition_warnings': addition_warnings,
-                'offset_torro': offset_torro, 'offset_torro_warnings': offset_torro_warnings}
+                'offset_torro': offset_torro, 'offset_torro_warnings': offset_torro_warnings,
+                'gutenberg': gutenberg, 'gutenberg_warnings': gutenberg_warnings}
     finally:
         book.close()

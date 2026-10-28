@@ -58,6 +58,12 @@ Po „Tworzywa łącznie” znajduje się osobna tabela z nazwą tworzywa, forma
 - Ark./szt. = arkusze łącznie / K4 wybranego arkusza. Przykład: 1400 arkuszy / 1000 szt. = 1,4 Ark./szt. Uwzględniana jest wskazana łączna liczba arkuszy, wraz z zapisanym w niej zapasem.
 - Brak opisu pomija pozycję. Brak poprawnej ilości zgłasza ostrzeżenie i nie jest zastępowany zerem. Brak formatu jest oznaczany przy zachowaniu poprawnej ilości. Dotychczasowe wyniki m² są liczone oddzielnie.
 
+### Druk papier GUTENBERG
+
+Po sekcji TORRO aplikacja pokazuje `DRUK PAPIER GUTENBERG`: nazwę papieru/tworzywa, format, arkusze łącznie i Ark./szt. Odczyt jest ograniczony do tej sekcji. Nazwa znajduje się pod `ETYKIETY PAPIEROWE` (obsługiwany również starszy nagłówek z numerem, np. `ETYKIETY PAPIEROWE 1`), format pod `ARKUSZ - ARK - FORMAT`, a ilość pod `ARK łącznie`. Scalone komórki są obsługiwane.
+
+Ark./szt. = liczba arkuszy łącznie / K4, np. 1300 / 8000 = 0,1625. Przyciski pozwalają skopiować sam wynik lub całą tabelę. Brak opisu pomija pozycję, a brak ilości lub formatu jest zgłaszany tak samo jak w TORRO. Wyniki papieru pozostają oddzielone od zużycia w m².
+
 ## Układ wyceny
 
 - Nakład: K4, dodatnia całkowita liczba sztuk; nazwa projektu: H4.

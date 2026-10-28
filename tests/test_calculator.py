@@ -23,6 +23,50 @@ def workbook(quantity=10, label='FREZ - cięcie', time=1.5, extra=False):
 
 
 class CalculatorTests(unittest.TestCase):
+    def gutenberg_workbook(self, total=1300, label='Papier kreda - grafika plecki', numbered=True):
+        book = openpyxl.load_workbook(BytesIO(self.offset_workbook()))
+        ws = book.active
+        ws['K4'] = 8000
+        ws['B144'] = 'DRUK PAPIER GUTENBERG'
+        ws.merge_cells('F146:H146')
+        ws['F146'] = 'ETYKIETY PAPIEROWE 1' if numbered else 'ETYKIETY PAPIEROWE '
+        ws.merge_cells('F147:H147')
+        ws['F147'] = label
+        ws.merge_cells('D147:E147')
+        ws['D147'] = 'ARKUSZ - ARK - FORMAT'
+        ws.merge_cells('D148:E148')
+        ws['D148'] = 'B2'
+        ws['J147'] = 'ARK łącznie'
+        ws['J148'] = total
+        ws['K148'] = 3120
+        ws['L148'] = .39
+        ws['B153'] = 'DRUK SITO - SAM DRUK'
+        ws['J156'] = 'ARK łącznie'
+        ws['J157'] = 999
+        out = BytesIO()
+        book.save(out)
+        book.close()
+        return out.getvalue()
+
+    def test_gutenberg_paper_and_torro_are_separate(self):
+        result = read_workbook(self.gutenberg_workbook())
+        paper, = result['gutenberg']
+        self.assertEqual((paper['format'], paper['total_sheets'], paper['per_item']), ('B2', 1300, .1625))
+        self.assertEqual((paper['description_cell'], paper['total_cell'], paper['format_cell']), ('F147', 'J148', 'D148'))
+        self.assertEqual(result['offset_torro'][0]['total_sheets'], 1400)
+        self.assertEqual(result['gutenberg_warnings'], [])
+
+    def test_gutenberg_header_without_number_and_blank_description(self):
+        self.assertEqual(len(read_workbook(self.gutenberg_workbook(numbered=False))['gutenberg']), 1)
+        self.assertEqual(read_workbook(self.gutenberg_workbook(label=' '))['gutenberg'], [])
+        self.assertEqual(read_workbook(workbook())['gutenberg'], [])
+
+    def test_gutenberg_invalid_cache_does_not_affect_torro(self):
+        result = read_workbook(self.gutenberg_workbook(total='=8000/8+300'))
+        self.assertEqual(result['gutenberg'], [])
+        self.assertIn('J148', result['gutenberg_warnings'][0])
+        self.assertEqual(len(result['offset_torro']), 1)
+
     def test_thermoforming_and_roll_die_cutting_are_a_separate_process(self):
         result = read_workbook(workbook(label='TERMOFORMIERKA + ROLSZTANCA - formowanie + sztancowanie'))
         values = {p['name']: p for p in result['processes']}
