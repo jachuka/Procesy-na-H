@@ -33,7 +33,9 @@ Obok wyników RBH aplikacja pokazuje zużycie tworzyw: opis, m² łącznie oraz 
 
 - Każdy blok zaczyna nagłówek `TWORZYWO I OPIS`; opis znajduje się bezpośrednio pod nim (także pod scalonym nagłówkiem).
 - Odpowiadający nagłówek `m2 łącznie` lub `m² łącznie` znajduje się w tym samym bloku, na prawo od opisu, w wierszu nagłówka bloku lub opisu. Wartość jest bezpośrednio pod nagłówkiem. Przykład: opis w H76, nagłówek w J76, wartość w J77; scalenia F:H są obsługiwane.
-- Bloki mogą występować jeden pod drugim lub obok siebie. Pusty opis pomija blok; powtarzające się opisy pozostają osobnymi pozycjami.
+- Bloki mogą występować jeden pod drugim lub obok siebie. Pusty opis pomija blok. Oryginalne pozycje pozostają widoczne, a tabela „Tworzywa łącznie” sumuje m² dla tego samego tworzywa i dzieli sumę przez K4.
+- Grupowanie porównuje nazwę przed pierwszym myślnikiem (`-`, `–`, `—`), pomija wielkość liter i nadmiarowe spacje, ujednolica grubości (`3mm`, `3 mm`, `3,0 mm`) oraz podstawowe określenia białego, czarnego i bezbarwnego koloru (np. `WH`, `biała`, `white`). Kolejność słów nie wpływa na dopasowanie. Pozostałe oznaczenia, w tym typ tworzywa, kolor, wykończenie i model, muszą się zgadzać; program nie zgaduje nieznanych zamienników. Nazwa w podsumowaniu pochodzi z pierwszej pozycji.
+- Podsumowanie ma przyciski do kopiowania zużycia na sztukę i całej tabeli z sumą m². Sumy liczone są przed zaokrągleniem. Gdy blok zgłasza błąd odczytu, podsumowanie obejmuje wyłącznie poprawne pozycje.
 - Zużycie na sztukę = zapisany wynik m² łącznie / K4. Wartość zero jest poprawna; zaokrąglenie następuje przy prezentacji.
 - Brak lub niepoprawny wynik m² zgłasza ostrzeżenie z adresem komórki, bez zastępowania go zerem. Wyniki procesów nadal są dostępne.
 

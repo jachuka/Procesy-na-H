@@ -46,16 +46,20 @@ function render() {
   $('setup').textContent = `Rozruch produkcji: ${duration(result.setup_hours)} — uwzględniony w MANUALNE. Łączne czasy wyświetlamy z dokładnością do sekundy; obliczenia zachowują pełną dokładność.`;
   $('rounding').textContent = result.processes.some(p => p.per_item > 0 && Number(p.per_item.toFixed(Number($('precision').value))) === 0) ? 'Uwaga: mały czas zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
   $('details').replaceChildren(...result.details.map(d => {const p=document.createElement('p'); p.textContent=`Wiersz ${d.row} · ${d.label} → ${d.group} · ${duration(d.hours)}`; return p;}));
-  $('materials').replaceChildren(...result.materials.map(m => {
+  const materialRow = (m, summary = false) => {
     const row = document.createElement('tr');
-    for (const text of [m.description, decimal(m.total_m2), decimal(m.per_item)]) {
+    for (const text of [m.description + (summary ? ` (${m.count} poz.)` : ''), decimal(m.total_m2), decimal(m.per_item)]) {
       const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
     }
     const cell = document.createElement('td'), button = document.createElement('button');
     button.textContent = 'Kopiuj'; button.setAttribute('aria-label', `Kopiuj zużycie ${m.description}`);
     button.onclick = () => copy(decimal(m.per_item)); cell.append(button); row.append(cell);
     return row;
-  }));
+  };
+  $('materials').replaceChildren(...result.materials.map(m => materialRow(m)));
+  $('materialtotals').replaceChildren(...result.material_totals.map(m => materialRow(m, true)));
+  $('materialsummary').hidden = !result.material_totals.length;
+  $('copymaterialtotals').disabled = !result.material_totals.length;
   $('materialstatus').textContent = result.material_warnings.length
     ? result.material_warnings.join('\n')
     : result.materials.length ? 'Zużycie na sztukę = m² łącznie / nakład z K4.' : 'Brak opisanych bloków tworzyw.';
@@ -74,3 +78,4 @@ $('sheet').onchange = () => calculate($('sheet').value);
 $('precision').onchange = render;
 $('copyall').onclick = () => result && copy('Proces\tGodziny / szt.\n' + result.processes.map(p => `${p.name}\t${decimal(p.per_item)}`).join('\n'));
 $('copymaterials').onclick = () => result && copy('Tworzywo i opis\tm² / szt.\n' + result.materials.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.per_item)}`).join('\n'));
+$('copymaterialtotals').onclick = () => result && copy('Tworzywo\tm² łącznie\tm² / szt.\n' + result.material_totals.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.total_m2)}\t${decimal(m.per_item)}`).join('\n'));

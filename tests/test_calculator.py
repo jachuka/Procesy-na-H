@@ -1,7 +1,7 @@
 import unittest
 from io import BytesIO
 import openpyxl
-from calculator import read_workbook
+from calculator import read_workbook, summarize_materials
 
 
 def workbook(quantity=10, label='FREZ - cięcie', time=1.5, extra=False):
@@ -23,6 +23,43 @@ def workbook(quantity=10, label='FREZ - cięcie', time=1.5, extra=False):
 
 
 class CalculatorTests(unittest.TestCase):
+    def test_repeated_materials_are_summed_before_rounding(self):
+        result = read_workbook(self.material_workbook(
+            labels=('OPAL SATYNA 3mm WH 10 DC - płytka', 'OPAL SATYNA 3mm WH 10 DC - litery'),
+            values=(.809053, .437675)))
+        self.assertEqual(len(result['materials']), 2)
+        self.assertEqual(len(result['material_totals']), 1)
+        group = result['material_totals'][0]
+        self.assertEqual(group['description'], 'OPAL SATYNA 3mm WH 10 DC')
+        self.assertEqual(group['count'], 2)
+        self.assertEqual(group['total_m2'], 1.246728)
+        self.assertEqual(group['per_item'], .1246728)
+
+    def test_equivalent_material_spelling_and_word_order(self):
+        for kind in ('PMMA', 'HIPS', 'PC', 'PET', 'Błona'):
+            with self.subTest(kind=kind):
+                rows = [{'description': f'{kind} 3mm biała - płytka', 'total_m2': .1},
+                        {'description': f'  {kind.lower()} WH 3,00 mm — litery', 'total_m2': .2}]
+                groups = summarize_materials(rows, 10)
+                self.assertEqual(len(groups), 1)
+                self.assertEqual(groups[0]['total_m2'], .3)
+                self.assertEqual(groups[0]['per_item'], .03)
+
+    def test_distinct_material_type_thickness_color_finish_model(self):
+        names = ['PMMA 3mm WH - płytka', 'HIPS 3mm WH - litery',
+                 'PMMA 4mm WH - litery', 'PMMA 3mm BK - litery',
+                 'PMMA 3mm WH satyna - litery', 'PMMA 3mm WH 10 DC - litery',
+                 'Błona 3M 7955MP - płytka', 'Błona 3M 467MP - litery']
+        self.assertEqual(len(summarize_materials(
+            [{'description': n, 'total_m2': 1} for n in names], 10)), len(names))
+
+    def test_identical_names_without_dash_and_empty_materials(self):
+        groups = summarize_materials([{'description': 'PET 1mm clear', 'total_m2': 0},
+                                     {'description': 'PET 1 mm bezbarwny', 'total_m2': 2}], 4)
+        self.assertEqual(groups[0]['count'], 2)
+        self.assertEqual(groups[0]['per_item'], .5)
+        self.assertEqual(summarize_materials([], 10), [])
+
     def test_production_layout_h75_h76_j76_j77(self):
         book = openpyxl.load_workbook(BytesIO(workbook(quantity=250)))
         ws = book.active

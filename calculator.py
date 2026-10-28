@@ -3,6 +3,7 @@ from io import BytesIO
 from math import isfinite
 from decimal import Decimal
 import re
+import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -10,6 +11,36 @@ import openpyxl
 
 GROUPS = ('FREZ', 'LASER', 'MANUALNE', 'SZTANCA', 'GILOTYNA', 'FORMIERKA')
 NS = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+
+
+def material_identity(description):
+    """Ignore the use after a dash; preserve grade/finish/model distinctions."""
+    name = re.split(r'[-–—]', description, maxsplit=1)[0].strip()
+    normalized = unicodedata.normalize('NFKC', name).casefold()
+    normalized = re.sub(r'(\d+(?:[.,]\d+)?)\s*mm\b',
+                        lambda m: f' {Decimal(m[1].replace(",", ".")).normalize():f}mm ', normalized)
+    aliases = {'biały': 'white', 'biała': 'white', 'białe': 'white', 'wh': 'white',
+               'czarny': 'black', 'czarna': 'black', 'czarne': 'black', 'bk': 'black',
+               'bezbarwny': 'clear', 'bezbarwna': 'clear', 'transparentny': 'clear',
+               'transparentna': 'clear', 'satynowy': 'satyna', 'satynowa': 'satyna',
+               'matowy': 'mat', 'matowa': 'mat'}
+    tokens = [aliases.get(t, t) for t in normalized.split()]
+    return name, tuple(sorted(tokens))
+
+
+def summarize_materials(materials, quantity):
+    groups = {}
+    for material in materials:
+        name, key = material_identity(material['description'])
+        # Keep an unusual description starting with a dash distinguishable.
+        if not key:
+            name, key = material['description'], (material['description'].casefold(),)
+        group = groups.setdefault(key, {'description': name, 'total': Decimal(0), 'count': 0})
+        group['total'] += Decimal(str(material['total_m2']))
+        group['count'] += 1
+    return [{'description': g['description'], 'total_m2': float(g['total']),
+             'per_item': float(g['total'] / Decimal(str(quantity))), 'count': g['count']}
+            for g in groups.values()]
 
 
 def read_materials(ws, root, quantity):
@@ -126,6 +157,7 @@ def read_workbook(data, sheet=None):
         return {'sheets': candidates, 'sheet': selected, 'quantity': int(quantity),
                 'project': str(ws['H4'].value or ''), 'setup_hours': float(setup),
                 'processes': [{'name': g, 'hours': float(h), 'per_item': float(h / Decimal(str(quantity)))} for g, h in totals.items()],
-                'details': details, 'materials': materials, 'material_warnings': material_warnings}
+                'details': details, 'materials': materials, 'material_warnings': material_warnings,
+                'material_totals': summarize_materials(materials, quantity)}
     finally:
         book.close()
