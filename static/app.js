@@ -26,7 +26,7 @@ async function calculate(sheet) {
       $('sheetbox').hidden = data.sheets.length < 2;
     }
     if (data.selection_required) { $('status').textContent = 'Wybierz arkusz wyceny.'; $('sheet').selectedIndex = -1; return; }
-    result = data; $('status').textContent = 'Gotowe. Kopiuj wartości przy wybranych procesach.'; render();
+    result = data; $('status').textContent = 'Gotowe. Kopiuj wartości przy procesach i tworzywach.'; render();
   } catch (e) { $('status').textContent = e.message || 'Nie udało się odczytać pliku.'; }
   finally { $('file').disabled = false; $('sheet').disabled = false; }
 }
@@ -46,6 +46,22 @@ function render() {
   $('setup').textContent = `Rozruch produkcji: ${duration(result.setup_hours)} — uwzględniony w MANUALNE. Łączne czasy wyświetlamy z dokładnością do sekundy; obliczenia zachowują pełną dokładność.`;
   $('rounding').textContent = result.processes.some(p => p.per_item > 0 && Number(p.per_item.toFixed(Number($('precision').value))) === 0) ? 'Uwaga: mały czas zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
   $('details').replaceChildren(...result.details.map(d => {const p=document.createElement('p'); p.textContent=`Wiersz ${d.row} · ${d.label} → ${d.group} · ${duration(d.hours)}`; return p;}));
+  $('materials').replaceChildren(...result.materials.map(m => {
+    const row = document.createElement('tr');
+    for (const text of [m.description, decimal(m.total_m2), decimal(m.per_item)]) {
+      const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
+    }
+    const cell = document.createElement('td'), button = document.createElement('button');
+    button.textContent = 'Kopiuj'; button.setAttribute('aria-label', `Kopiuj zużycie ${m.description}`);
+    button.onclick = () => copy(decimal(m.per_item)); cell.append(button); row.append(cell);
+    return row;
+  }));
+  $('materialstatus').textContent = result.material_warnings.length
+    ? result.material_warnings.join('\n')
+    : result.materials.length ? 'Zużycie na sztukę = m² łącznie / nakład z K4.' : 'Brak opisanych bloków tworzyw.';
+  $('materialrounding').textContent = result.materials.some(m => m.per_item > 0 && Number(m.per_item.toFixed(Number($('precision').value))) === 0)
+    ? 'Małe zużycie zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
+  $('copymaterials').disabled = !result.materials.length;
 }
 $('file').onchange = () => {
   file = $('file').files[0]; $('results').hidden = true; $('sheetbox').hidden = true; result = null;
@@ -57,3 +73,4 @@ $('file').onchange = () => {
 $('sheet').onchange = () => calculate($('sheet').value);
 $('precision').onchange = render;
 $('copyall').onclick = () => result && copy('Proces\tGodziny / szt.\n' + result.processes.map(p => `${p.name}\t${decimal(p.per_item)}`).join('\n'));
+$('copymaterials').onclick = () => result && copy('Tworzywo i opis\tm² / szt.\n' + result.materials.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.per_item)}`).join('\n'));

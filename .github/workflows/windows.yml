@@ -3,6 +3,10 @@ name: Aplikacja Windows
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+    paths:
+      - VERSION
     tags:
       - 'v*'
 
@@ -26,7 +30,7 @@ jobs:
       - name: Test executable startup and bundled files
         shell: pwsh
         run: |
-          $process = Start-Process -FilePath .\dist\Procesy-na-sztuke.exe -ArgumentList '--smoke-test' -PassThru
+          $process = Start-Process -FilePath .\dist\Procesy-na-sztuke.exe -ArgumentList '--smoke-test' -WindowStyle Hidden -PassThru
           if (-not $process.WaitForExit(60000)) {
             $process.Kill()
             throw 'Executable startup timed out'
@@ -37,9 +41,11 @@ jobs:
           name: Procesy-na-sztuke-Windows
           path: dist/Procesy-na-sztuke.exe
       - name: Publish Windows executable
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TARGET: ${{ github.sha }}
         run: |
-          gh release create $env:GITHUB_REF_NAME dist/Procesy-na-sztuke.exe --title "Procesy na sztukę $env:GITHUB_REF_NAME" --notes "Aplikacja Windows: pobierz Procesy-na-sztuke.exe i uruchom dwuklikiem. Nie wymaga instalacji Pythona."
+          $tag = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { 'v' + (Get-Content VERSION -Raw).Trim() }
+          gh release create $tag dist/Procesy-na-sztuke.exe --target $env:RELEASE_TARGET --title "Procesy na sztukę $tag" --notes "Aplikacja Windows: pobierz Procesy-na-sztuke.exe i uruchom dwuklikiem. Zużycie tworzyw w m²/szt. z opisami i kopiowaniem; dotychczasowe obliczenia procesów bez zmian. Nie wymaga instalacji Pythona."
