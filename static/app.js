@@ -26,7 +26,7 @@ async function calculate(sheet) {
       $('sheetbox').hidden = data.sheets.length < 2;
     }
     if (data.selection_required) { $('status').textContent = 'Wybierz arkusz wyceny.'; $('sheet').selectedIndex = -1; return; }
-    result = data; $('status').textContent = 'Gotowe. Kopiuj wartości przy procesach i tworzywach.'; render();
+    result = data; $('status').textContent = 'Gotowe. Kopiuj wartości przy procesach, dodatkach i tworzywach.'; render();
   } catch (e) { $('status').textContent = e.message || 'Nie udało się odczytać pliku.'; }
   finally { $('file').disabled = false; $('sheet').disabled = false; }
 }
@@ -66,6 +66,22 @@ function render() {
   $('materialrounding').textContent = result.materials.some(m => m.per_item > 0 && Number(m.per_item.toFixed(Number($('precision').value))) === 0)
     ? 'Małe zużycie zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
   $('copymaterials').disabled = !result.materials.length;
+  $('additions').replaceChildren(...result.additions.map(a => {
+    const row = document.createElement('tr');
+    const label = [a.specification, a.description].filter(Boolean).join(' · ');
+    for (const text of [label, `${a.section} / ${a.unit}`, decimal(a.per_item)]) {
+      const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
+    }
+    const cell = document.createElement('td'), button = document.createElement('button');
+    button.textContent = 'Kopiuj'; button.setAttribute('aria-label', `Kopiuj ilość ${label}`);
+    button.onclick = () => copy(decimal(a.per_item)); cell.append(button); row.append(cell);
+    return row;
+  }));
+  $('additionstatus').textContent = result.addition_warnings.length ? result.addition_warnings.join('\n')
+    : result.additions.length ? 'Ilości na jedną sztukę wyrobu. Pianka: m² / szt. wyrobu.' : 'Brak opisanych dodatków.';
+  $('additionrounding').textContent = result.additions.some(a => a.per_item > 0 && Number(a.per_item.toFixed(Number($('precision').value))) === 0)
+    ? 'Mała ilość dodatku zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
+  $('copyadditions').disabled = !result.additions.length;
 }
 $('file').onchange = () => {
   file = $('file').files[0]; $('results').hidden = true; $('sheetbox').hidden = true; result = null;
@@ -79,3 +95,4 @@ $('precision').onchange = render;
 $('copyall').onclick = () => result && copy('Proces\tGodziny / szt.\n' + result.processes.map(p => `${p.name}\t${decimal(p.per_item)}`).join('\n'));
 $('copymaterials').onclick = () => result && copy('Tworzywo i opis\tm² / szt.\n' + result.materials.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.per_item)}`).join('\n'));
 $('copymaterialtotals').onclick = () => result && copy('Tworzywo\tm² łącznie\tm² / szt.\n' + result.material_totals.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.total_m2)}\t${decimal(m.per_item)}`).join('\n'));
+$('copyadditions').onclick = () => result && copy('Specyfikacja i opis\tSekcja\tJednostka\tIlość / szt. wyrobu\n' + result.additions.map(a => `${[a.specification, a.description].filter(Boolean).join(' · ').replace(/[\t\r\n]+/g, ' ')}\t${a.section}\t${a.unit}\t${decimal(a.per_item)}`).join('\n'));

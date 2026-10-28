@@ -91,6 +91,52 @@ def read_materials(ws, root, quantity):
     return materials, warnings
 
 
+def read_additions(ws, quantity):
+    """Read quantities, never infer consumption from monetary cost columns."""
+    rows = list(ws.iter_rows(max_col=13, values_only=True))
+    def text(value):
+        return ' '.join(str(value or '').split())
+
+    headers = []
+    for number, row in enumerate(rows, 1):
+        component = text(row[2]).upper()
+        if 'ILOŚĆ' in component and 'KOMPONENT' in component and text(row[7]).upper() == 'OPIS':
+            kind = 'component' if 'DODATEK NA ILOŚĆ' in text(row[10]).upper() else 'batch'
+            headers.append((number, kind))
+        elif text(row[4]).casefold().replace('²', '2') == 'm2 pianki' and text(row[5]).upper() == 'OPIS':
+            headers.append((number, 'foam'))
+    additions, warnings = [], []
+    for header, kind in headers:
+        end = min([len(rows) + 1] + [n for n, _ in headers if n > header]
+                  + [n for n, r in enumerate(rows, 1) if n > header and isinstance(r[1], str) and text(r[1])])
+        for number in range(header + 1, end):
+            row = rows[number - 1]
+            specification = '' if kind == 'foam' else text(row[4])
+            description = text(row[5] if kind == 'foam' else row[7])
+            if not specification and not description:
+                continue
+            label = ' · '.join(v for v in (specification, description) if v)
+            column = 'E' if kind == 'foam' else 'C'
+            value = row[4] if kind == 'foam' else row[2]
+            divisor = quantity if kind == 'batch' else row[10]
+            address = f'{column}{number}'
+            valid = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and isfinite(v)
+            if not valid(value) or value < 0:
+                warnings.append(f'{address}: {label} — brak poprawnej ilości dodatku. Przelicz i zapisz plik w Excelu.')
+                continue
+            if not valid(divisor) or divisor <= 0:
+                warnings.append(f'K{number}: {label} — podaj dodatnią liczbę sztuk wyrobu przypadających na dodatek.')
+                continue
+            per_item = Decimal(str(value)) / Decimal(str(divisor))
+            additions.append({'specification': specification, 'description': description,
+                              'unit': 'm²' if kind == 'foam' else 'szt.',
+                              'section': {'component': 'Komponenty', 'foam': 'Pianka ochronna',
+                                          'batch': 'Na cały nakład'}[kind],
+                              'total_quantity': float(per_item * Decimal(str(quantity))),
+                              'per_item': float(per_item), 'row': number})
+    return additions, warnings
+
+
 def read_workbook(data, sheet=None):
     with zipfile.ZipFile(BytesIO(data)) as archive:
         if sum(i.file_size for i in archive.infolist()) > 50 * 1024 * 1024:
@@ -154,10 +200,12 @@ def read_workbook(data, sheet=None):
         if not details:
             raise ValueError('Tabela procesów jest pusta.')
         materials, material_warnings = read_materials(ws, root, quantity)
+        additions, addition_warnings = read_additions(ws, quantity)
         return {'sheets': candidates, 'sheet': selected, 'quantity': int(quantity),
                 'project': str(ws['H4'].value or ''), 'setup_hours': float(setup),
                 'processes': [{'name': g, 'hours': float(h), 'per_item': float(h / Decimal(str(quantity)))} for g, h in totals.items()],
                 'details': details, 'materials': materials, 'material_warnings': material_warnings,
-                'material_totals': summarize_materials(materials, quantity)}
+                'material_totals': summarize_materials(materials, quantity),
+                'additions': additions, 'addition_warnings': addition_warnings}
     finally:
         book.close()

@@ -29,6 +29,16 @@ Wgraj XLSX, wybierz arkusz, jeśli plik zawiera kilka wycen. Kopiuj samą liczb�
 
 Obok wyników RBH aplikacja pokazuje zużycie tworzyw: opis, m² łącznie oraz m² / szt. Przycisk „Kopiuj” przy tworzywie kopiuje samą liczbę m² / szt. z przecinkiem. Możesz też skopiować całą tabelę tworzyw. Wybrana precyzja dotyczy wyświetlania i kopiowania obu tabel.
 
+### Dodatki
+
+Przed tworzywami znajduje się tabela „Dodatki” z opisem i specyfikacją, sekcją, jednostką i ilością na sztukę wyrobu. Przycisk przy pozycji kopiuje samą ilość; można też skopiować całą tabelę. Koszty nie są odczytywane do tej tabeli.
+
+- Komponenty: ilość z C / liczba sztuk wyrobu z K w danym wierszu. Przykłady: karton na 12 sztuk = 1/12; 6 nitów na 1 wyrób = 6.
+- Pianka: zapisane m² z E / liczba sztuk wyrobu z K; jednostka m²/szt. Opis z F.
+- Dodatki na cały nakład i dostawy tworzywa: ilość z C / nakład z K4.
+- Wiersze komponentów i dodatków mają specyfikację w E i opis w H. Puste pozycje są pomijane. Brak poprawnej ilości lub dodatniego dzielnika pokazuje ostrzeżenie z adresem komórki i nie blokuje innych wyników.
+- Nagłówki tabel są wyszukiwane w wybranym arkuszu; transport do klienta oraz tworzywa pozostają poza sekcją dodatków. Wyniki są liczone osobno dla każdego arkusza, bez zaokrąglania ilości do całych opakowań.
+
 ### Bloki tworzyw
 
 - Każdy blok zaczyna nagłówek `TWORZYWO I OPIS`; opis znajduje się bezpośrednio pod nim (także pod scalonym nagłówkiem).

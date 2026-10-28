@@ -23,6 +23,65 @@ def workbook(quantity=10, label='FREZ - cięcie', time=1.5, extra=False):
 
 
 class CalculatorTests(unittest.TestCase):
+    def additions_workbook(self, divisor=12, amount=1, foam=.12):
+        book = openpyxl.load_workbook(BytesIO(workbook(quantity=8000)))
+        ws = book.active
+        for r in (43, 60):
+            ws.cell(r, 3, 'ILOŚĆ SZT. KOMPONENTNU')
+            ws.cell(r, 5, 'SPECYFIKACJA')
+            ws.cell(r, 8, 'OPIS')
+        ws['K43'] = 'DODATEK NA ILOŚĆ SZTUK Z NAKŁADU'
+        for r, c, value in [(44, 3, amount), (44, 5, '230x280x440'),
+                            (44, 8, 'karton na 12'), (44, 11, divisor),
+                            (46, 3, 6), (46, 5, 'Nit + podkładka'), (46, 8, 'Wojtech'), (46, 11, 1),
+                            (54, 5, 'm2 pianki'), (54, 6, 'OPIS'),
+                            (55, 5, foam), (55, 6, 'Pianka ochronna'), (55, 11, 2),
+                            (58, 2, 'DODATKI NA CAŁY NAKŁAD + DOSTAWY TWORZYWA'),
+                            (61, 3, 2), (61, 5, 'wykrojnik kieszonki x2'),
+                            (67, 2, 'DAP - TRANSPORT DO KLIENTA'),
+                            (70, 3, 5), (70, 5, 'Nie jest dodatkiem')]:
+            ws.cell(r, c, value)
+        # Deliberately unrelated costs must never become consumption quantities.
+        ws['J44'] = 2000
+        ws['L44'] = .25
+        out = BytesIO()
+        book.save(out)
+        book.close()
+        return out.getvalue()
+
+    def test_additions_quantities_and_section_boundaries(self):
+        result = read_workbook(self.additions_workbook())
+        items = result['additions']
+        self.assertEqual([a['row'] for a in items], [44, 46, 55, 61])
+        self.assertAlmostEqual(items[0]['per_item'], 1 / 12)
+        self.assertEqual(items[1]['per_item'], 6)
+        self.assertEqual(items[2]['per_item'], .06)
+        self.assertEqual(items[2]['unit'], 'm²')
+        self.assertEqual(items[3]['per_item'], .00025)
+        self.assertEqual(result['addition_warnings'], [])
+        self.assertEqual(result['processes'], read_workbook(workbook(quantity=8000))['processes'])
+
+    def test_invalid_component_divisor_does_not_hide_other_results(self):
+        for divisor in (None, 0, -1, True, '12'):
+            with self.subTest(divisor=divisor):
+                result = read_workbook(self.additions_workbook(divisor=divisor))
+                self.assertEqual(len(result['additions']), 3)
+                self.assertIn('K44', result['addition_warnings'][0])
+                self.assertTrue(result['processes'])
+
+    def test_invalid_addition_quantity_or_formula_cache(self):
+        for amount in (None, -1, True, '=1+1', '#VALUE!'):
+            with self.subTest(amount=amount):
+                result = read_workbook(self.additions_workbook(amount=amount))
+                self.assertIn('C44', result['addition_warnings'][0])
+        result = read_workbook(self.additions_workbook(foam='=C55*D55/10000'))
+        self.assertIn('E55', result['addition_warnings'][0])
+
+    def test_zero_quantity_and_absent_additions(self):
+        self.assertEqual(read_workbook(self.additions_workbook(amount=0))['additions'][0]['per_item'], 0)
+        self.assertEqual(read_workbook(workbook())['additions'], [])
+        self.assertEqual(read_workbook(workbook())['addition_warnings'], [])
+
     def test_repeated_materials_are_summed_before_rounding(self):
         result = read_workbook(self.material_workbook(
             labels=('OPAL SATYNA 3mm WH 10 DC - płytka', 'OPAL SATYNA 3mm WH 10 DC - litery'),
