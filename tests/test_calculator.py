@@ -23,6 +23,66 @@ def workbook(quantity=10, label='FREZ - cięcie', time=1.5, extra=False):
 
 
 class CalculatorTests(unittest.TestCase):
+    def test_thermoforming_and_roll_die_cutting_are_a_separate_process(self):
+        result = read_workbook(workbook(label='TERMOFORMIERKA + ROLSZTANCA - formowanie + sztancowanie'))
+        values = {p['name']: p for p in result['processes']}
+        self.assertEqual(values['TERMOFORMIERKA + ROLSZTANCA']['per_item'], 3.6)
+        self.assertEqual(values['FORMIERKA']['hours'], 0)
+        self.assertEqual(values['SZTANCA']['hours'], 0)
+        self.assertEqual(len(read_workbook(workbook())['processes']), 6)
+
+    def offset_workbook(self, total=1400, name='PETgA 0,5mm biały', format='B2', numbered=False, shift=0):
+        book = openpyxl.load_workbook(BytesIO(workbook(quantity=1000)))
+        ws = book.active
+        ws.cell(123 + shift, 2, 'TWORZYWO NA DRUK OFFSET TORRO')
+        ws.merge_cells(start_row=125+shift, start_column=6, end_row=125+shift, end_column=8)
+        ws.cell(125 + shift, 6, 'TWORZYWO 1 NA OFFSET' if numbered else 'TWORZYWO NA OFFSET')
+        ws.merge_cells(start_row=126+shift, start_column=6, end_row=126+shift, end_column=8)
+        ws.cell(126 + shift, 6, name)
+        ws.merge_cells(start_row=126+shift, start_column=4, end_row=126+shift, end_column=5)
+        ws.cell(126 + shift, 4, 'ARKUSZ - ARK - FORMAT')
+        ws.merge_cells(start_row=127+shift, start_column=4, end_row=127+shift, end_column=5)
+        ws.cell(127 + shift, 4, format)
+        ws.cell(126 + shift, 10, 'ARK łącznie')
+        ws.cell(127 + shift, 10, total)
+        ws.cell(132 + shift, 2, 'DRUK OFFSET TORRO - UWAGA ZMIENIAĆ DLA NAKŁADÓW')
+        ws.cell(134 + shift, 10, 'ARK łącznie')
+        ws.cell(135 + shift, 10, 1150)
+        out = BytesIO()
+        book.save(out)
+        book.close()
+        return out.getvalue()
+
+    def test_offset_torro_merged_format_and_separate_print_quantity(self):
+        result = read_workbook(self.offset_workbook())
+        item, = result['offset_torro']
+        self.assertEqual((item['format'], item['total_sheets'], item['per_item']), ('B2', 1400, 1.4))
+        self.assertEqual((item['description_cell'], item['total_cell'], item['format_cell']), ('F126', 'J127', 'D127'))
+        self.assertEqual(result['offset_torro_warnings'], [])
+        self.assertEqual(result['materials'], [])
+        self.assertEqual(result['processes'], read_workbook(workbook(quantity=1000))['processes'])
+
+    def test_offset_torro_numbered_header_and_shifted_section(self):
+        item, = read_workbook(self.offset_workbook(numbered=True, shift=7))['offset_torro']
+        self.assertEqual(item['total_cell'], 'J134')
+        self.assertEqual(item['per_item'], 1.4)
+
+    def test_offset_torro_invalid_quantity_and_missing_cache(self):
+        for value in (None, -1, True, '=1000+400', '#VALUE!', '1400'):
+            with self.subTest(value=value):
+                result = read_workbook(self.offset_workbook(total=value))
+                self.assertEqual(result['offset_torro'], [])
+                self.assertIn('J127', result['offset_torro_warnings'][0])
+                self.assertTrue(result['processes'])
+
+    def test_offset_torro_empty_name_zero_and_missing_format(self):
+        self.assertEqual(read_workbook(self.offset_workbook(name='  '))['offset_torro'], [])
+        self.assertEqual(read_workbook(self.offset_workbook(total=0))['offset_torro'][0]['per_item'], 0)
+        result = read_workbook(self.offset_workbook(format=None))
+        self.assertEqual(result['offset_torro'][0]['format'], '')
+        self.assertTrue(result['offset_torro_warnings'])
+        self.assertEqual(read_workbook(workbook())['offset_torro'], [])
+
     def additions_workbook(self, divisor=12, amount=1, foam=.12):
         book = openpyxl.load_workbook(BytesIO(workbook(quantity=8000)))
         ws = book.active

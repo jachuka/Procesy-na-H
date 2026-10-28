@@ -48,4 +48,4 @@ jobs:
           RELEASE_TARGET: ${{ github.sha }}
         run: |
           $tag = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { 'v' + (Get-Content VERSION -Raw).Trim() }
-          gh release create $tag dist/Procesy-na-sztuke.exe --target $env:RELEASE_TARGET --title "Procesy na sztukę $tag" --notes "Aplikacja Windows: pobierz Procesy-na-sztuke.exe i uruchom dwuklikiem. Dodano sekcję Dodatki przed tworzywami: ilość komponentów na sztukę, pianka w m²/szt., dodatki na cały nakład oraz kopiowanie wyników. Dotychczasowe obliczenia procesów i tworzyw pozostają bez zmian. Nie wymaga instalacji Pythona."
+          gh release create $tag dist/Procesy-na-sztuke.exe --target $env:RELEASE_TARGET --title "Procesy na sztukę $tag" --notes "Aplikacja Windows: pobierz Procesy-na-sztuke.exe i uruchom dwuklikiem. Dodano TWORZYWO NA DRUK OFFSET TORRO: nazwa, format arkusza, arkusze łącznie, Ark./szt. i kopiowanie. Dodano osobną grupę RBH TERMOFORMIERKA + ROLSZTANCA. Dotychczasowe wyniki dodatków i tworzyw w m² pozostają bez zmian. Nie wymaga instalacji Pythona."

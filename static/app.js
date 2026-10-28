@@ -82,6 +82,21 @@ function render() {
   $('additionrounding').textContent = result.additions.some(a => a.per_item > 0 && Number(a.per_item.toFixed(Number($('precision').value))) === 0)
     ? 'Mała ilość dodatku zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
   $('copyadditions').disabled = !result.additions.length;
+  $('offsetrows').replaceChildren(...result.offset_torro.map(m => {
+    const row = document.createElement('tr');
+    for (const text of [m.description, m.format || 'Brak formatu', decimal(m.total_sheets), decimal(m.per_item)]) {
+      const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
+    }
+    const cell = document.createElement('td'), button = document.createElement('button');
+    button.textContent = 'Kopiuj'; button.setAttribute('aria-label', `Kopiuj Ark. na sztukę ${m.description}`);
+    button.onclick = () => copy(decimal(m.per_item)); cell.append(button); row.append(cell);
+    return row;
+  }));
+  $('offsetstatus').textContent = result.offset_torro_warnings.length ? result.offset_torro_warnings.join('\n')
+    : result.offset_torro.length ? 'Ark. / 1 szt. = arkusze łącznie / nakład z K4.' : 'Brak opisanego tworzywa na druk OFFSET TORRO.';
+  $('offsetrounding').textContent = result.offset_torro.some(m => m.per_item > 0 && Number(m.per_item.toFixed(Number($('precision').value))) === 0)
+    ? 'Małe zużycie arkuszy zaokrągla się do zera. Zwiększ liczbę miejsc po przecinku.' : '';
+  $('copyoffset').disabled = !result.offset_torro.length;
 }
 $('file').onchange = () => {
   file = $('file').files[0]; $('results').hidden = true; $('sheetbox').hidden = true; result = null;
@@ -96,3 +111,4 @@ $('copyall').onclick = () => result && copy('Proces\tGodziny / szt.\n' + result.
 $('copymaterials').onclick = () => result && copy('Tworzywo i opis\tm² / szt.\n' + result.materials.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.per_item)}`).join('\n'));
 $('copymaterialtotals').onclick = () => result && copy('Tworzywo\tm² łącznie\tm² / szt.\n' + result.material_totals.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.total_m2)}\t${decimal(m.per_item)}`).join('\n'));
 $('copyadditions').onclick = () => result && copy('Specyfikacja i opis\tSekcja\tJednostka\tIlość / szt. wyrobu\n' + result.additions.map(a => `${[a.specification, a.description].filter(Boolean).join(' · ').replace(/[\t\r\n]+/g, ' ')}\t${a.section}\t${a.unit}\t${decimal(a.per_item)}`).join('\n'));
+$('copyoffset').onclick = () => result && copy('Tworzywo\tFormat arkusza\tArkusze łącznie\tArk. / 1 szt.\n' + result.offset_torro.map(m => `${m.description.replace(/[\t\r\n]+/g, ' ')}\t${m.format.replace(/[\t\r\n]+/g, ' ')}\t${decimal(m.total_sheets)}\t${decimal(m.per_item)}`).join('\n'));

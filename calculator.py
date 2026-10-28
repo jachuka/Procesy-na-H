@@ -137,6 +137,57 @@ def read_additions(ws, quantity):
     return additions, warnings
 
 
+def read_offset_torro(ws, root, quantity):
+    """Read sheet consumption only from the TORRO material section."""
+    cells = [c for row in ws.iter_rows() for c in row if c.value is not None]
+    def text(value):
+        return ' '.join(str(value or '').split())
+
+    merges = [openpyxl.worksheet.cell_range.CellRange(m.attrib['ref'])
+              for m in root.findall('m:mergeCells/m:mergeCell', NS)]
+    def below(cell):
+        row = next((m.max_row for m in merges if cell.coordinate in m), cell.row) + 1
+        return f'{cell.column_letter}{row}'
+
+    items, warnings = [], []
+    sections = [c for c in cells if text(c.value).upper() == 'TWORZYWO NA DRUK OFFSET TORRO']
+    for section in sections:
+        end = min([ws.max_row + 1] + [c.row for c in cells if c.row > section.row
+                  and c.column == section.column and text(c.value).upper().startswith(
+                      ('DRUK ', 'TWORZYWO NA DRUK ', 'TWORZYWA', 'DODATKI'))])
+        area = [c for c in cells if section.row < c.row < end]
+        headers = [c for c in area if re.fullmatch(r'TWORZYWO(?:\s+\d+)? NA OFFSET', text(c.value).upper())]
+        if not headers:
+            warnings.append(f'{section.coordinate}: brak nagłówka TWORZYWO NA OFFSET w sekcji TORRO.')
+        for header in headers:
+            description = below(header)
+            name = text(ws[description].value)
+            if not name:
+                continue
+            block_end = min([end] + [h.row for h in headers if h.row > header.row])
+            block = [c for c in area if header.row <= c.row < block_end]
+            totals = [c for c in block if text(c.value).upper() == 'ARK ŁĄCZNIE']
+            if len(totals) != 1:
+                warnings.append(f'{header.coordinate}: {name} — brak jednoznacznego nagłówka ARK łącznie.')
+                continue
+            total_cell = below(totals[0])
+            value = ws[total_cell].value
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value) or value < 0:
+                warnings.append(f'{total_cell}: {name} — brak poprawnej liczby arkuszy. Przelicz i zapisz plik w Excelu.')
+                continue
+            formats = [c for c in block if re.sub(r'\s*[-–—]\s*', ' - ', text(c.value).upper()) == 'ARKUSZ - ARK - FORMAT']
+            format_cell = below(formats[0]) if len(formats) == 1 else None
+            sheet_format = text(ws[format_cell].value) if format_cell is not None else ''
+            if not sheet_format:
+                warnings.append(f'{header.coordinate}: {name} — brak formatu arkusza pod ARKUSZ - ARK - FORMAT.')
+            total = Decimal(str(value))
+            items.append({'description': name, 'format': sheet_format, 'total_sheets': float(total),
+                          'per_item': float(total / Decimal(str(quantity))),
+                          'description_cell': description, 'total_cell': total_cell,
+                          'format_cell': format_cell})
+    return items, warnings
+
+
 def read_workbook(data, sheet=None):
     with zipfile.ZipFile(BytesIO(data)) as archive:
         if sum(i.file_size for i in archive.infolist()) > 50 * 1024 * 1024:
@@ -184,6 +235,8 @@ def read_workbook(data, sheet=None):
             is_setup = group == 'RBH NA ROZRUCH PRODUKCJI'
             if is_setup:
                 group = 'MANUALNE'
+            if group == 'TERMOFORMIERKA + ROLSZTANCA':
+                totals.setdefault(group, Decimal(0))
             if group not in totals:
                 raise ValueError(f'Nieznana grupa procesu w H{row[7].row}: {label}. Wynik nie został obliczony.')
             address = row[12].coordinate
@@ -201,11 +254,13 @@ def read_workbook(data, sheet=None):
             raise ValueError('Tabela procesów jest pusta.')
         materials, material_warnings = read_materials(ws, root, quantity)
         additions, addition_warnings = read_additions(ws, quantity)
+        offset_torro, offset_torro_warnings = read_offset_torro(ws, root, quantity)
         return {'sheets': candidates, 'sheet': selected, 'quantity': int(quantity),
                 'project': str(ws['H4'].value or ''), 'setup_hours': float(setup),
                 'processes': [{'name': g, 'hours': float(h), 'per_item': float(h / Decimal(str(quantity)))} for g, h in totals.items()],
                 'details': details, 'materials': materials, 'material_warnings': material_warnings,
                 'material_totals': summarize_materials(materials, quantity),
-                'additions': additions, 'addition_warnings': addition_warnings}
+                'additions': additions, 'addition_warnings': addition_warnings,
+                'offset_torro': offset_torro, 'offset_torro_warnings': offset_torro_warnings}
     finally:
         book.close()

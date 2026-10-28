@@ -49,6 +49,15 @@ Przed tworzywami znajduje się tabela „Dodatki” z opisem i specyfikacją, se
 - Zużycie na sztukę = zapisany wynik m² łącznie / K4. Wartość zero jest poprawna; zaokrąglenie następuje przy prezentacji.
 - Brak lub niepoprawny wynik m² zgłasza ostrzeżenie z adresem komórki, bez zastępowania go zerem. Wyniki procesów nadal są dostępne.
 
+### Tworzywo na druk OFFSET TORRO
+
+Po „Tworzywa łącznie” znajduje się osobna tabela z nazwą tworzywa, formatem arkusza, liczbą arkuszy łącznie i Ark. / 1 szt. Przycisk przy pozycji kopiuje samą liczbę Ark./szt.; kopiowanie całej tabeli obejmuje także nazwę, format i łączną liczbę arkuszy.
+
+- Odczyt dotyczy sekcji `TWORZYWO NA DRUK OFFSET TORRO`, do początku następnej sekcji druku. Nie pobiera ilości z tabel kosztów druku ani OFFSET VIPER.
+- Nazwa znajduje się pod nagłówkiem `TWORZYWO NA OFFSET` (starszy wariant `TWORZYWO 1 NA OFFSET` również działa), arkusze pod `ARK łącznie`, a format pod `ARKUSZ - ARK - FORMAT`. Obsługiwane są scalone komórki, np. nazwa F126:H126, format D127:E127 oraz ilość J127.
+- Ark./szt. = arkusze łącznie / K4 wybranego arkusza. Przykład: 1400 arkuszy / 1000 szt. = 1,4 Ark./szt. Uwzględniana jest wskazana łączna liczba arkuszy, wraz z zapisanym w niej zapasem.
+- Brak opisu pomija pozycję. Brak poprawnej ilości zgłasza ostrzeżenie i nie jest zastępowany zerem. Brak formatu jest oznaczany przy zachowaniu poprawnej ilości. Dotychczasowe wyniki m² są liczone oddzielnie.
+
 ## Układ wyceny
 
 - Nakład: K4, dodatnia całkowita liczba sztuk; nazwa projektu: H4.
@@ -56,6 +65,7 @@ Przed tworzywami znajduje się tabela „Dodatki” z opisem i specyfikacją, se
 - Kolejne wiersze: opis w H, czas Excel (ułamek doby) w M. Pierwszy pusty opis kończy sekcję.
 - Grupa przed myślnikiem: FREZ, LASER, MANUALNE, SZTANCA, GILOTYNA, FORMIERKA. Nieznane grupy blokują wynik zamiast znikać z podsumowania.
 - `RBH NA ROZRUCH PRODUKCJI` doliczany do MANUALNE.
+- `TERMOFORMIERKA + ROLSZTANCA` ma osobną grupę wynikową, pokazywaną, gdy taki proces występuje w wycenie.
 - Wynik: suma czasów w M × 24 / K4. Zaokrąglenie dopiero do prezentacji i kopiowania. Czasy powyżej 24 godzin są obsługiwane.
 
 Arkusz TAB jest pomijany. Odczytywane są zapisane wyniki formuł, bez ich wykonywania. Przed wgraniem przelicz i zapisz plik w Excelu. Nieaktualnych zapisanych wyników nie można automatycznie rozpoznać. Brakujący wynik lub błąd w czasie blokuje obliczenie. Pliki są przetwarzane w pamięci i nie są zapisywane na serwerze. Limit przesłania: 10 MB, rozpakowanej zawartości: 50 MB. Stary format XLS i pliki szyfrowane nie są obsługiwane.
