@@ -23,6 +23,29 @@ def workbook(quantity=10, label='FREZ - cięcie', time=1.5, extra=False):
 
 
 class CalculatorTests(unittest.TestCase):
+    def test_summa_plain_name_and_description(self):
+        for label in ('SUMMA', 'SUMMA - wycinanie', 'summa – cięcie'):
+            with self.subTest(label=label):
+                result = read_workbook(workbook(label=label))
+                values = {p['name']: p for p in result['processes']}
+                self.assertEqual(values['SUMMA']['hours'], 36)
+                self.assertEqual(values['SUMMA']['per_item'], 3.6)
+                self.assertEqual(values['FREZ']['hours'], 0)
+                self.assertAlmostEqual(values['MANUALNE']['per_item'], .2)
+
+    def test_summa_sums_rows_without_changing_other_groups(self):
+        book = openpyxl.load_workbook(BytesIO(workbook(label='SUMMA - cięcie')))
+        ws = book.active
+        ws['H12'] = 'SUMMA — bigowanie'
+        ws['M12'] = 1 / 24
+        out = BytesIO()
+        book.save(out)
+        book.close()
+        values = {p['name']: p for p in read_workbook(out.getvalue())['processes']}
+        self.assertEqual(values['SUMMA']['hours'], 37)
+        self.assertEqual(values['SUMMA']['per_item'], 3.7)
+        self.assertNotIn('SUMMA', [p['name'] for p in read_workbook(workbook())['processes']])
+
     def uv_workbook(self, first=83.33333333333333, blank=False):
         book = openpyxl.load_workbook(BytesIO(workbook(quantity=1000)))
         ws = book.active

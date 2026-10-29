@@ -48,4 +48,4 @@ jobs:
           RELEASE_TARGET: ${{ github.sha }}
         run: |
           $tag = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME } else { 'v' + (Get-Content VERSION -Raw).Trim() }
-          gh release create $tag dist/Procesy-na-sztuke.exe --target $env:RELEASE_TARGET --title "Procesy na sztukę $tag" --notes "Aplikacja Windows: pobierz Procesy-na-sztuke.exe i uruchom dwuklikiem. Dodano Druk UV Konstantynów: każda pozycja z opisem, m² łącznie i m²/szt., podsumowanie całego druku UV oraz kopiowanie. Dotychczasowe obliczenia RBH, dodatków, tworzyw, TORRO i GUTENBERG pozostają bez zmian. Nie wymaga instalacji Pythona."
+          gh release create $tag dist/Procesy-na-sztuke.exe --target $env:RELEASE_TARGET --title "Procesy na sztukę $tag" --notes "Aplikacja Windows: pobierz Procesy-na-sztuke.exe i uruchom dwuklikiem. Dodano osobną grupę RBH SUMMA: sumowanie czasów, godziny na sztukę i kopiowanie. Dotychczasowe obliczenia RBH, dodatków, tworzyw, TORRO i GUTENBERG pozostają bez zmian. Nie wymaga instalacji Pythona."

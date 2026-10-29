@@ -258,7 +258,7 @@ def read_workbook(data, sheet=None):
             is_setup = group == 'RBH NA ROZRUCH PRODUKCJI'
             if is_setup:
                 group = 'MANUALNE'
-            if group == 'TERMOFORMIERKA + ROLSZTANCA':
+            if group in ('TERMOFORMIERKA + ROLSZTANCA', 'SUMMA'):
                 totals.setdefault(group, Decimal(0))
             if group not in totals:
                 raise ValueError(f'Nieznana grupa procesu w H{row[7].row}: {label}. Wynik nie został obliczony.')

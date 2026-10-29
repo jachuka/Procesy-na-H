@@ -78,6 +78,7 @@ Każda pozycja oraz suma mają m² łącznie i m²/szt. = m² / K4. Suma powstaj
 - Grupa przed myślnikiem: FREZ, LASER, MANUALNE, SZTANCA, GILOTYNA, FORMIERKA. Nieznane grupy blokują wynik zamiast znikać z podsumowania.
 - `RBH NA ROZRUCH PRODUKCJI` doliczany do MANUALNE.
 - `TERMOFORMIERKA + ROLSZTANCA` ma osobną grupę wynikową, pokazywaną, gdy taki proces występuje w wycenie.
+- `SUMMA` ma osobną grupę RBH, pokazywaną, gdy występuje w wycenie. Obsługiwane są nazwy `SUMMA` oraz `SUMMA - opis`; czasy wszystkich pozycji są sumowane i dzielone przez K4.
 - Wynik: suma czasów w M × 24 / K4. Zaokrąglenie dopiero do prezentacji i kopiowania. Czasy powyżej 24 godzin są obsługiwane.
 
 Arkusz TAB jest pomijany. Odczytywane są zapisane wyniki formuł, bez ich wykonywania. Przed wgraniem przelicz i zapisz plik w Excelu. Nieaktualnych zapisanych wyników nie można automatycznie rozpoznać. Brakujący wynik lub błąd w czasie blokuje obliczenie. Pliki są przetwarzane w pamięci i nie są zapisywane na serwerze. Limit przesłania: 10 MB, rozpakowanej zawartości: 50 MB. Stary format XLS i pliki szyfrowane nie są obsługiwane.
